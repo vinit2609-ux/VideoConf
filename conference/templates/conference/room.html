@@ -113,6 +113,12 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("Using domain:", domain);
 
     window.approveUserRecording = function (requestId) {
+        const approveBtn = document.querySelector(`button[onclick="approveUserRecording(${requestId})"]`);
+        if (approveBtn) {
+            approveBtn.disabled = true;
+            approveBtn.textContent = 'Approving...';
+        }
+        showToast('Approving recording request...', 'info');
         fetch(`/api/approve-recording/${room_id}/${requestId}/`, {
             method: 'POST',
             headers: {
@@ -124,6 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
               if (data.status === "approved") {
                   showToast("Recording permission granted!", 'success');
                   loadParticipantsAndRequests();
+                  loadRecordingRequests();
               } else if (data.error) {
                   showToast("Error: " + data.error, 'danger');
               }
@@ -131,6 +138,12 @@ document.addEventListener("DOMContentLoaded", function () {
           .catch(error => {
               console.error("Error approving recording request:", error);
               showToast("Error approving recording request. Please try again.", 'danger');
+          })
+          .finally(() => {
+              if (approveBtn) {
+                  approveBtn.disabled = false;
+                  approveBtn.textContent = 'Approve';
+              }
           });
     };
 
@@ -177,6 +190,8 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Jitsi container not found in DOM.");
             return;
         }
+        // Remove previous iframe if exists
+        container.innerHTML = '';
         console.log("Launching Jitsi with canRecord:", canRecord, "isModerator:", isModerator);
         const options = {
             roomName: "{{ room.name|escapejs }}",
@@ -198,7 +213,7 @@ document.addEventListener("DOMContentLoaded", function () {
             brandwaterLogo: "{% static 'conference/images/shyena_logo.png' %}",
             BRAND_WATERMARK_LINK: "https://shyena.com",
             DEFAULT_LOGO_URL: 'https://shyena.com',
-        },
+            },
             interfaceConfigOverwrite: {
                 SHOW_JITSI_WATERMARK: false,
                 brandwatermarkUrl: "{% static 'conference/images/shyena_logo.png' %}",
@@ -219,12 +234,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     ]
             }
         };
-
-     
-        
-
-        const api = new JitsiMeetExternalAPI(domain, options);
-        api.addEventListener('readyToClose', () => {
+        window.api = new JitsiMeetExternalAPI(domain, options);
+        window.api.addEventListener('readyToClose', () => {
             window.location.href = "/";
         });
     }
@@ -260,7 +271,20 @@ document.addEventListener("DOMContentLoaded", function () {
         const data = JSON.parse(e.data);
         if (data.type === 'recording_approved') {
             showToast('Your recording request has been approved! You can now record the meeting.', 'success');
-            location.reload();
+            // Re-check permission and update UI
+            fetch(`/api/has-recording-permission/${room_id}/`, {
+                headers: { 'X-CSRFToken': csrfToken }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.can_record === true) {
+                    // Dispose previous Jitsi instance if exists
+                    if (window.api && typeof window.api.dispose === 'function') {
+                        window.api.dispose();
+                    }
+                    launchJitsi(true); // re-launch with recording enabled
+                }
+            });
         }
         // Listen for real-time updates
         if (data.type === 'participants_updated') {

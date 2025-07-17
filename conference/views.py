@@ -154,6 +154,9 @@ def room_list(request):
 
 @login_required
 def create_room(request):
+    if not is_admin(request.user):
+        messages.error(request, 'You do not have permission to create a room. Please contact an admin.')
+        return redirect('room_list')
     if request.method == 'POST':
         form = RoomCreationForm(request.POST)
         if form.is_valid():

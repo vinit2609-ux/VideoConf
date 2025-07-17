@@ -1,0 +1,377 @@
+{% extends 'conference/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    :root {
+        --primary: #6f42c1;
+        --primary-dark: #5a32a3;
+        --secondary: #00ff88;
+        --dark: #1e1e2e;
+        --gray: #b0b0b0;
+        --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    body, .main-content {
+        background: url('{% static "conference/images/intro-bg.jpg" %}') no-repeat center center fixed;
+        background-size: cover;
+    }
+
+    .main-content::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(30, 30, 46, 0.3);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .main-content, .container {
+        position: relative;
+        z-index: 1;
+    }
+
+    .main-content {
+        flex: 1;
+        padding: 2rem 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 2rem;
+        width: 100%;
+    }
+
+    .hero-section {
+        text-align: center;
+        margin-bottom: 3rem;
+        color: #fff;
+    }
+
+    .hero-title {
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .hero-subtitle {
+        font-size: 1.25rem;
+        max-width: 700px;
+        margin: 0 auto 2rem;
+        opacity: 0.9;
+        line-height: 1.6;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 2rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: #fff;
+        border: none;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(111, 66, 193, 0.3);
+    }
+
+    .btn-outline {
+        background: var(--primary);
+        border: 2px solid var(--primary);
+        color: white;
+    }
+
+    .btn-outline:hover {
+        background: rgba(111, 66, 193, 0.2);
+        color: #fff;
+        transform: translateY(-2px);
+    }
+
+    .btn-toggle {
+        background: var(--primary);
+        border: 2px solid var(--primary);
+        color: white;
+    }
+
+    .btn-toggle:hover {
+        background: rgb(122, 0, 204);
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .btn-danger {
+        background: #e74c3c;
+        color: #fff;
+        border: none;
+        width: 100%;
+    }
+
+    .btn-danger:hover {
+        background: #c0392b;
+        transform: translateY(-2px);
+    }
+
+    .rooms-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .room-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .room-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(111, 66, 193, 0.3);
+    }
+
+    .room-header {
+        background: rgba(111, 66, 193, 0.1);
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .room-badge {
+        background: var(--primary);
+        color: #fff;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .host-badge {
+        background: var(--secondary);
+        color: var(--dark);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .room-body {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .room-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-align: center;
+        color: #fff;
+    }
+
+    .room-details {
+        margin-bottom: 1.5rem;
+        color: var(--gray);
+        flex-grow: 1;
+    }
+
+    .room-detail {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .join-btn {
+        margin-top: auto;
+        text-align: center;
+    }
+
+    .delete-form {
+        margin-top: 0.5rem;
+        width: 100%;
+    }
+
+    .empty-state {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        padding: 3rem;
+        text-align: center;
+        box-shadow: var(--shadow);
+        grid-column: 1 / -1;
+        color: #fff;
+    }
+
+    #toast-container .toast-message {
+        min-width: 220px;
+        max-width: 350px;
+        background: #fff;
+        color: #222;
+        border-radius: 8px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+        font-weight: 500;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        text-align: left;
+        padding: 0.75rem 1.25rem;
+        opacity: 1;
+        transition: opacity 0.5s ease;
+    }
+</style>
+
+<div class="main-content">
+    <div class="container">
+        <!-- Toasts -->
+        <div id="toast-container" style="position: fixed; top: 30px; right: 30px; z-index: 9999;">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="toast-message">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Hero -->
+        <section class="hero-section">
+            <a href="https://shyena.in/" target="_blank">
+                <img src="{% static 'conference/images/shyena_logo.png' %}" alt="Shyena Logo" style="height: 60px; margin-bottom: 1rem;" />
+            </a>
+            <h1 class="hero-title">V E E K S H A</h1>
+            <p class="hero-subtitle">Connect with your team, clients, and partners with crystal-clear video and audio quality</p>
+            <div class="action-buttons">
+                <a href="{% url 'create_room' %}" class="btn btn-outline">
+                    <i class="fas fa-plus-circle"></i> Create Meeting
+                </a>
+                <a href="{% url 'join_room_options' %}" class="btn btn-outline">
+                    <i class="fas fa-door-open"></i> Join Meeting
+                </a>
+            </div>
+        </section>
+
+        <button class="btn btn-toggle" onclick="toggleRooms()" id="toggleButton">
+            <i class="fas fa-users"></i> My Created Rooms
+        </button>
+
+        <div id="roomsContainer" class="rooms-container" style="display: none;">
+            {% for room in rooms %}
+                {% if room.created_by == request.user %}
+                <div class="room-card">
+                    <div class="room-header">
+                        <span class="room-badge"><i class="fas fa-users"></i> {{ room.participants.count }} Joined</span>
+                        <span class="host-badge"><i class="fas fa-crown"></i> Host</span>
+                    </div>
+                    <div class="room-body">
+                        <h3 class="room-title">{{ room.name }}</h3>
+                        <div class="room-details">
+                            <p class="room-detail"><i class="fas fa-user"></i> {{ room.created_by.username }}</p>
+                            <p class="room-detail"><i class="fas fa-calendar"></i> {{ room.created_at|date:"M d, Y" }}</p>
+                            {% if room.start_datetime %}
+                            <p class="room-detail"><i class="fas fa-clock"></i>
+                                {% if room.meeting_status_display == 'upcoming' %}
+                                    <span class="text-warning">Starts: {{ room.start_datetime|date:"M d, Y g:i A" }}</span>
+                                {% elif room.meeting_status_display == 'active' %}
+                                    <span class="text-success">Active Now</span>
+                                {% elif room.meeting_status_display == 'ended' %}
+                                    <span class="text-danger">Ended</span>
+                                {% endif %}
+                            </p>
+                            <p class="room-detail"><i class="fas fa-hourglass-half"></i> Duration: {{ room.duration }} min</p>
+                            {% endif %}
+                            <p class="room-detail"><i class="fas fa-key"></i> Room Code: <strong>{{ room.room_code }}</strong></p>
+                        </div>
+                        {% if room.meeting_status_display == 'upcoming' %}
+                            <div class="alert alert-warning text-center mb-2">
+                                <i class="fas fa-clock"></i> Meeting not started yet
+                            </div>
+                        {% elif room.meeting_status_display == 'ended' %}
+                            <div class="alert alert-danger text-center mb-2">
+                                <i class="fas fa-times-circle"></i> Meeting has ended
+                            </div>
+                        {% endif %}
+                        <a href="{% url 'join_room' room.id %}" class="btn btn-primary join-btn"><i class="fas fa-video"></i> Join Now</a>
+                        <form action="{% url 'delete_room' room.id %}" method="post" class="delete-form">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            {% empty %}
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fas fa-video-slash"></i></div>
+                    <h3>You Haven't Created Any Rooms Yet</h3>
+                    <p>Start a new video conference by creating your first room!</p>
+                    <a href="{% url 'create_room' %}" class="btn btn-primary mt-3"><i class="fas fa-plus"></i> Create Room</a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    function toggleRooms() {
+        const container = document.getElementById('roomsContainer');
+        const button = document.getElementById('toggleButton');
+        if (container.style.display === 'none') {
+            container.style.display = 'grid';
+            button.innerHTML = '<i class="fas fa-users"></i> Hide My Rooms';
+        } else {
+            container.style.display = 'none';
+            button.innerHTML = '<i class="fas fa-users"></i> My Created Rooms';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        function autoDismissToasts() {
+            document.querySelectorAll('#toast-container .toast-message').forEach(function (toast) {
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 500);
+                }, 1000);
+            });
+        }
+
+        autoDismissToasts();
+
+        const observer = new MutationObserver(autoDismissToasts);
+        observer.observe(document.getElementById('toast-container'), { childList: true });
+    });
+</script>
+{% endblock %}
+{% endblock %}

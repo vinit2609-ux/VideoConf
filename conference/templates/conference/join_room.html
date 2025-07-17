@@ -1,0 +1,258 @@
+{% extends 'conference/base.html' %}
+ 
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-shield-alt me-2"></i> Secure Room Access</h4>
+                </div>
+                <div class="card-body">
+                    {% if error %}
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        {{ error }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" id="joinForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="room_id" value="{{ room.id }}">
+                        
+                        <!-- Room Information -->
+                        <div class="room-info mb-4 p-3 bg-light rounded">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-1 text-primary">{{ room.name }}</h5>
+                                    <small class="text-muted">
+                                        Created by {{ room.created_by.username }} on {{ room.created_at|date:'M d, Y' }}
+                                    </small>
+                                </div>
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-users me-1"></i> {{ room.participants.count }}
+                                </span>
+                            </div>
+                        </div>
+ 
+                        <!-- Room Code Verification -->
+                        <div class="mb-4">
+                            <label for="roomCode" class="form-label fw-bold">
+                                <i class="fas fa-key me-2"></i> Room Access Code
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-primary text-white">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input type="text" class="form-control" id="roomCode" name="room_code"
+                                       placeholder="Enter 6-digit code" required maxlength="6"
+                                       pattern="[A-Z0-9]{6}" title="6 uppercase letters or numbers">
+                            </div>
+                            <small class="text-muted mt-1 d-block">
+                                <i class="fas fa-info-circle me-1"></i> Enter the code provided by the meeting host
+                            </small>
+                        </div>
+                        
+                        <!-- Password (only if room has password) -->
+                        {% if room.password %}
+                        <div class="mb-4">
+                            <label for="id_password" class="form-label fw-bold">
+                                <i class="fas fa-lock me-2"></i> Room Password
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-primary text-white">
+                                    <i class="fas fa-key"></i>
+                                </span>
+                                <input type="password" class="form-control" id="id_password"
+                                       name="password" placeholder="Enter room password" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted mt-1 d-block">
+                                <i class="fas fa-shield-alt me-1"></i> This room requires additional verification
+                            </small>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Security Indicator -->
+                            {% comment %} <div class="security-indicator mb-4">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Security Level:</span>
+                                    <span class="fw-bold">
+                                        {% if room.password %}High{% else %}Standard{% endif %}
+                                    </span>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar bg-{% if room.password %}success{% else %}info{% endif %}"
+                                        role="progressbar" style="width: {% if room.password %}100{% else %}70{% endif %}%">
+                                    </div>
+                                </div>
+                            </div> {% endcomment %}
+                        
+                        <!-- Buttons -->
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg py-3" id="joinButton">
+                                <i class="fas fa-door-open me-2"></i> Join Room
+                            </button>
+                            <a href="{% url 'room_list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i> Back to Rooms
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+ 
+{% block extra_css %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        min-height: 100vh;
+    }
+ 
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+    }
+ 
+    .card {
+        border-radius: 12px;
+        overflow: hidden;
+        border: none;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+    }
+ 
+    .card:hover {
+        transform: translateY(-5px);
+    }
+ 
+    .card-header {
+        padding: 1.25rem 1.5rem;
+    }
+ 
+    .room-info {
+        border-left: 4px solid #3a7bd5;
+        background-color: #f8faff;
+        transition: all 0.3s ease;
+    }
+ 
+    .room-info:hover {
+        background-color: #e9f5ff;
+    }
+ 
+    .form-control:focus {
+        border-color: #3a7bd5;
+        box-shadow: 0 0 0 0.25rem rgba(58, 123, 213, 0.25);
+    }
+ 
+    #roomCode {
+        font-weight: bold;
+        letter-spacing: 3px;
+        text-align: center;
+        text-transform: uppercase;
+    }
+ 
+    .security-indicator {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #3a7bd5;
+    }
+ 
+    .progress {
+        height: 8px;
+        border-radius: 4px;
+    }
+ 
+    .btn-primary {
+        background-color: #3a7bd5;
+        border: none;
+        transition: all 0.3s ease;
+    }
+ 
+    .btn-primary:hover {
+        background-color: #2c5fb3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+ 
+    .is-invalid {
+        border-color: #dc3545 !important;
+    }
+ 
+    .valid-feedback {
+        color: #28a745;
+    }
+</style>
+{% endblock %}
+ 
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle password visibility
+    const togglePassword = document.querySelector('#togglePassword');
+    if (togglePassword) {
+        togglePassword.addEventListener('click', function() {
+            const password = document.querySelector('#id_password');
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+            this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+        });
+    }
+ 
+    // Room code input formatting
+    const roomCodeInput = document.querySelector('#roomCode');
+    roomCodeInput.addEventListener('input', function() {
+        // Auto-uppercase and limit to 6 characters
+        this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 6);
+    });
+ 
+    // Form validation
+    const form = document.querySelector('#joinForm');
+    const joinButton = document.querySelector('#joinButton');
+    
+    form.addEventListener('submit', function(e) {
+        const roomCode = roomCodeInput.value.trim();
+        
+        if (roomCode.length !== 6) {
+            e.preventDefault();
+            roomCodeInput.classList.add('is-invalid');
+            showAlert('Please enter a valid 6-character room code', 'danger');
+            return;
+        }
+        
+        {% if room.password %}
+        const passwordInput = document.querySelector('#id_password');
+        if (!passwordInput.value) {
+            e.preventDefault();
+            passwordInput.classList.add('is-invalid');
+            showAlert('Please enter the room password', 'danger');
+            return;
+        }
+        {% endif %}
+    });
+ 
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        const cardBody = document.querySelector('.card-body');
+        cardBody.insertBefore(alertDiv, cardBody.firstChild);
+        
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(alertDiv);
+            bsAlert.close();
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

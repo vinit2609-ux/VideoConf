@@ -1,0 +1,4 @@
+[2025-07-08 07:29:10,801] INFO audit User Superuser (ID: 4) requested recording in room 46 for recipient type moderator (Request ID: 28)
+[2025-07-08 07:29:14,773] INFO audit User user1 (ID: 1) approved recording request 28 in room 46 for requester Superuser (ID: 4)
+[2025-07-08 10:50:10,167] INFO audit User user100 (ID: 5) requested recording in room 60 for recipient type moderator (Request ID: 29)
+[2025-07-08 10:50:19,518] INFO audit User user1 (ID: 1) approved recording request 29 in room 60 for requester user100 (ID: 5)

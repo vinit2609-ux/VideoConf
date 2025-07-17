@@ -1,0 +1,308 @@
+{% extends "conference/base.html" %}
+{% load crispy_forms_tags %}
+ 
+{% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg,rgb(71, 138, 143) 0%,rgb(239, 246, 244) 100%);
+        min-height: 100vh;
+    }
+    .card-header {
+        background: linear-gradient(90deg,rgb(70, 193, 82) 0%, #4c51bf 100%);
+        color: white;
+        position: relative;
+        overflow: hidden;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+    }
+    .card-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100%;
+        {% comment %} background: url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80') no-repeat center center; {% endcomment %}
+        background-size: cover;
+        opacity: 0.2;
+        z-index: 0;
+    }
+    .card-header > * {
+        position: relative;
+        z-index: 1;
+    }
+    .card {
+        border-radius: 15px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background: rgb(240, 246, 245);
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
+    }
+    .btn-purple {
+        background: linear-gradient(90deg, #6b46c1 0%, #4c51bf 100%);
+        border: none;
+        color: white;
+        transition: background 0.3s ease;
+    }
+    .btn-purple:hover {
+        background: linear-gradient(90deg, #553c9a 0%, #3b4a9b 100%);
+    }
+    .btn-success {
+        background: linear-gradient(90deg, #38a169 0%, #2f855a 100%);
+        border: none;
+        color: white;
+    }
+    .btn-success:hover {
+        background: linear-gradient(90deg, #2f855a 0%, #276749 100%);
+    }
+    .btn-outline-secondary {
+        border-color: #6b46c1;
+        color: #6b46c1;
+    }
+    .btn-outline-secondary:hover {
+        background: #6b46c1;
+        color: white;
+    }
+    .alert-info {
+        background: #e6f3ff;
+        border-color: #b3d7ff;
+        color: #2b6cb0;
+    }
+    .input-group .form-control {
+        border-radius: 8px 0 0 8px;
+    }
+    .input-group .btn {
+        border-radius: 0 8px 8px 0;
+    }
+</style>
+ 
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            {% if room_created %}
+                <!-- Success Card (Shows after room creation) -->
+                <div class="card shadow-lg mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-check-circle me-2"></i>Room Created Successfully!
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-calendar-day me-2"></i>
+                            <strong>Meeting Scheduled:</strong> {{ room_start_time|date:"F j, Y" }} at {{ room_start_time|time:"H:i" }}
+                        </div>
+                        
+                        <h5 class="mb-3"><i class="fas fa-link me-2"></i>Shareable Link:</h5>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="roomLink" value="{{ room_url }}" readonly>
+                            <button class="btn btn-purple" onclick="copyToClipboard('roomLink')">
+                                <i class="fas fa-copy me-1"></i> Copy
+                            </button>
+                        </div>
+ 
+                        <h5 class="mb-3"><i class="fas fa-key me-2"></i>Room Code:</h5>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="roomCode" value="{{ room_code }}" readonly>
+                            <button class="btn btn-purple" onclick="copyToClipboard('roomCode')">
+                                <i class="fas fa-copy me-1"></i> Copy
+                            </button>
+                        </div>
+ 
+                        <div class="d-grid gap-2">
+                            <a href="{{ room_url }}" class="btn btn-success">
+                                <i class="fas fa-door-open me-1"></i> Enter Room Now
+                            </a>
+                        </div>
+                        
+                        <!-- Role Assignment Summary -->
+                        {% if assigned_moderators or assigned_meeting_managers %}
+                        <div class="mt-4">
+                            <h6><i class="fas fa-users me-2"></i>Assigned Roles:</h6>
+                            {% if assigned_moderators %}
+                            <div class="mb-2">
+                                <strong>Moderators:</strong>
+                                <ul class="list-unstyled ms-3">
+                                    {% for moderator in assigned_moderators %}
+                                    <li><i class="fas fa-user-shield me-1"></i>{{ moderator.username }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                            
+                            {% if assigned_meeting_managers %}
+                            <div class="mb-2">
+                                <strong>Meeting Managers:</strong>
+                                <ul class="list-unstyled ms-3">
+                                    {% for manager in assigned_meeting_managers %}
+                                    <li><i class="fas fa-user-cog me-1"></i>{{ manager.username }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <!-- Room Creation Form with Updated Fields -->
+                <div class="card shadow-lg">
+                    <div class="card-header bg-purple text-blue">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-video me-2"></i>Schedule Conference Room
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" class="mt-3">
+                            {% csrf_token %}
+                            <div class="mb-4">
+                                {{ form.name|as_crispy_field }}
+                                <small class="form-text text-muted">Choose a descriptive name for your meeting</small>
+                            </div>
+                            
+                            <div class="mb-4">
+                                {{ form.description|as_crispy_field }}
+                                <small class="form-text text-muted">Provide details about your meeting</small>
+                            </div>
+                            
+                            <!-- Meeting Type Selection -->
+                            <div class="mb-4">
+                                <h6><i class="fas fa-calendar-alt me-2"></i>Meeting Type</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="meeting_type" id="instant" value="instant" checked>
+                                    <label class="form-check-label" for="instant">
+                                        <i class="fas fa-bolt me-1"></i> Instant Meeting (Start Now)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="meeting_type" id="scheduled" value="scheduled">
+                                    <label class="form-check-label" for="scheduled">
+                                        <i class="fas fa-clock me-1"></i> Scheduled Meeting (Set Date & Time)
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Scheduling Fields (Hidden by default) -->
+                            <div id="schedulingFields" style="display: none;">
+                                <div class="mb-4">
+                                    {{ form.start_datetime|as_crispy_field }}
+                                    <small class="form-text text-muted">Select the date and time for your meeting</small>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    {{ form.duration|as_crispy_field }}
+                                    <small class="form-text text-muted">How long the meeting will last</small>
+                                </div>
+                            </div>
+                            
+                            {% comment %} <div class="mb-4">
+                                {{ form.room_password|as_crispy_field }}
+                                <small class="form-text text-muted">Optional password for additional security</small>
+                            </div>
+                             {% endcomment %}
+                            <div class="mb-4">
+                                {{ form.enable_lobby|as_crispy_field }}
+                                <small class="form-text text-muted">Enable if participants should wait in lobby before joining</small>
+                            </div>
+                            
+                            <!-- Role Assignment Section -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="fas fa-users-cog me-2"></i>Role Assignment</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        {{ form.assign_moderators|as_crispy_field }}
+                                        <small class="form-text text-muted">Select users who will have moderator privileges (you are automatically a moderator)</small>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        {{ form.assign_meeting_managers|as_crispy_field }}
+                                        <small class="form-text text-muted">Select users who will have meeting manager privileges for recording requests</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="{% url 'room_list' %}" class="btn btn-outline-secondary me-md-2">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-purple">
+                                    <i class="fas fa-plus me-1"></i> Create Meeting
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+ 
+<!-- Copy to Clipboard Function -->
+<script>
+    // Meeting type toggle functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const instantRadio = document.getElementById('instant');
+        const scheduledRadio = document.getElementById('scheduled');
+        const schedulingFields = document.getElementById('schedulingFields');
+        
+        function toggleSchedulingFields() {
+            if (scheduledRadio.checked) {
+                schedulingFields.style.display = 'block';
+            } else {
+                schedulingFields.style.display = 'none';
+            }
+        }
+        
+        instantRadio.addEventListener('change', toggleSchedulingFields);
+        scheduledRadio.addEventListener('change', toggleSchedulingFields);
+        
+        // Initialize on page load
+        toggleSchedulingFields();
+    });
+ 
+    function copyToClipboard(elementId) {
+        const copyText = document.getElementById(elementId);
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); // For mobile
+        document.execCommand("copy");
+ 
+        // Show custom toast notification
+        showToast("Copied to clipboard!");
+    }
+ 
+    function showToast(message) {
+        const toast = document.createElement("div");
+        toast.className = "toast align-items-center text-white bg-success border-0 position-fixed top-0 end-0 m-3";
+        toast.style.zIndex = 9999;
+        toast.setAttribute("role", "alert");
+        toast.setAttribute("aria-live", "assertive");
+        toast.setAttribute("aria-atomic", "true");
+ 
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-check-circle me-2"></i>${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+ 
+        document.body.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast, { delay: 2500 });
+        bsToast.show();
+ 
+        setTimeout(() => {
+            toast.classList.remove("show");
+            setTimeout(() => toast.remove(), 300);
+        }, 2800);
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+ 
+{% endblock %}
+ 
+ 

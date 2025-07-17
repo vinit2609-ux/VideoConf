@@ -1,0 +1,195 @@
+{% extends "conference/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg,rgb(71, 138, 143) 0%,rgb(239, 246, 244) 100%);
+        min-height: 100vh;
+    }
+    .card-header {
+        background: linear-gradient(90deg,rgb(70, 193, 82) 0%, #4c51bf 100%);
+        color: white;
+        position: relative;
+        overflow: hidden;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+    }
+    .card {
+        border-radius: 15px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background: rgb(240, 246, 245);
+    }
+    .btn-purple {
+        background: linear-gradient(90deg, #6b46c1 0%, #4c51bf 100%);
+        border: none;
+        color: white;
+        transition: background 0.3s ease;
+    }
+    .btn-purple:hover {
+        background: linear-gradient(90deg, #553c9a 0%, #3b4a9b 100%);
+    }
+    .role-badge {
+        font-size: 0.8em;
+        padding: 0.25em 0.6em;
+    }
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-lg">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-users-cog me-2"></i>Manage Room Participants - {{ room.name }}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Current Participants -->
+                    <div class="mb-4">
+                        <h5><i class="fas fa-users me-2"></i>Current Participants</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for participant in participants %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ participant.user.username }}</strong>
+                                            {% if participant.user == room.created_by %}
+                                                <span class="badge bg-primary role-badge">Creator</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if participant.is_moderator %}
+                                                <span class="badge bg-warning text-dark role-badge">Moderator</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary role-badge">Participant</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if participant.is_active %}
+                                                <span class="badge bg-success role-badge">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-danger role-badge">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if participant.user != room.created_by %}
+                                                {% if participant.is_moderator %}
+                                                    <form method="post" style="display: inline;">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="action" value="remove_moderator">
+                                                        <input type="hidden" name="user_id" value="{{ participant.user.id }}">
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning" 
+                                                                onclick="return confirm('Remove moderator role from {{ participant.user.username }}?')">
+                                                            <i class="fas fa-user-minus"></i> Remove Moderator
+                                                        </button>
+                                                    </form>
+                                                {% else %}
+                                                    <form method="post" style="display: inline;">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="action" value="add_moderator">
+                                                        <input type="hidden" name="user_id" value="{{ participant.user.id }}">
+                                                        <button type="submit" class="btn btn-sm btn-success">
+                                                            <i class="fas fa-user-shield"></i> Make Moderator
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">Room Creator</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Add New Participants -->
+                    <div class="mb-4">
+                        <h5><i class="fas fa-user-plus me-2"></i>Add New Participants</h5>
+                        <div class="row">
+                            {% for user in all_users %}
+                            <div class="col-md-4 mb-2">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ user.username }}</h6>
+                                        <div class="btn-group" role="group">
+                                            <form method="post" style="display: inline;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="add_moderator">
+                                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                <button type="submit" class="btn btn-sm btn-success">
+                                                    <i class="fas fa-user-shield"></i> Moderator
+                                                </button>
+                                            </form>
+                                            <form method="post" style="display: inline;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="add_meeting_manager">
+                                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                <button type="submit" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-user-cog"></i> Meeting Manager
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="col-12">
+                                <p class="text-muted">No users available to add.</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Meeting Managers -->
+                    <div class="mb-4">
+                        <h5><i class="fas fa-user-cog me-2"></i>Meeting Managers</h5>
+                        <div class="row">
+                            {% for manager in meeting_managers %}
+                            <div class="col-md-4 mb-2">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ manager.username }}</h6>
+                                        <span class="badge bg-info">Meeting Manager</span>
+                                        <form method="post" class="mt-2">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="remove_meeting_manager">
+                                            <input type="hidden" name="user_id" value="{{ manager.id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                    onclick="return confirm('Remove meeting manager role from {{ manager.username }}?')">
+                                                <i class="fas fa-user-minus"></i> Remove
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="col-12">
+                                <p class="text-muted">No meeting managers assigned.</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'room' room.id %}" class="btn btn-purple">
+                            <i class="fas fa-door-open me-1"></i> Back to Room
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

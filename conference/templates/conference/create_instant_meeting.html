@@ -1,0 +1,115 @@
+{% extends "conference/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg,rgb(71, 138, 143) 0%,rgb(239, 246, 244) 100%);
+        min-height: 100vh;
+    }
+    .card-header {
+        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+        color: white;
+        position: relative;
+        overflow: hidden;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+    }
+    .card {
+        border-radius: 15px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background: rgb(240, 246, 245);
+    }
+    .btn-success {
+        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+        border: none;
+        color: white;
+    }
+    .btn-success:hover {
+        background: linear-gradient(90deg, #218838 0%, #1ea085 100%);
+    }
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-bolt me-2"></i>Create Instant Meeting
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Instant Meeting:</strong> Start your meeting immediately without scheduling!
+                    </div>
+                    
+                    <form method="post" class="mt-3">
+                        {% csrf_token %}
+                        {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li><strong>{{ field|capfirst }}:</strong> {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        <input type="hidden" name="meeting_type" value="instant">
+                        
+                        <div class="mb-4">
+                            {{ form.name|as_crispy_field }}
+                            <small class="form-text text-muted">Give your meeting a name</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.description|as_crispy_field }}
+                            <small class="form-text text-muted">Brief description of the meeting (optional)</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.room_password|as_crispy_field }}
+                            <small class="form-text text-muted">Optional password for security</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.enable_lobby|as_crispy_field }}
+                            <small class="form-text text-muted">Enable lobby if participants should wait for approval</small>
+                        </div>
+                        
+                        <!-- Role Assignment Section -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-users-cog me-2"></i>Role Assignment (Optional)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ form.assign_moderators|as_crispy_field }}
+                                    <small class="form-text text-muted">Select additional moderators</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.assign_meeting_managers|as_crispy_field }}
+                                    <small class="form-text text-muted">Select meeting managers for recording requests</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'room_list' %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-times me-1"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-bolt me-1"></i> Start Meeting Now
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

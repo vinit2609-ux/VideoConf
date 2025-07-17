@@ -1,0 +1,128 @@
+{% extends "conference/base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg,rgb(71, 138, 143) 0%,rgb(239, 246, 244) 100%);
+        min-height: 100vh;
+    }
+    .card {
+        border-radius: 15px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background: rgb(240, 246, 245);
+        border: none;
+    }
+    .card-header {
+        background: linear-gradient(90deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+    }
+    .btn-primary {
+        background: linear-gradient(90deg, #007bff 0%, #0056b3 100%);
+        border: none;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: linear-gradient(90deg, #0056b3 0%, #004085 100%);
+    }
+    .time-info {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 20px 0;
+    }
+    .status-badge {
+        font-size: 1.2em;
+        padding: 10px 20px;
+        border-radius: 25px;
+    }
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-clock me-2"></i>
+                        {% if status == 'upcoming' %}
+                            Meeting Not Started Yet
+                        {% elif status == 'ended' %}
+                            Meeting Has Ended
+                        {% endif %}
+                    </h3>
+                </div>
+                <div class="card-body text-center">
+                    {% if status == 'upcoming' %}
+                        <div class="mb-4">
+                            <i class="fas fa-hourglass-start fa-4x text-warning mb-3"></i>
+                            <h4 class="text-warning">Meeting Starts Soon</h4>
+                            <p class="lead">The meeting "{{ room.name }}" is scheduled to start in <strong>{{ time_until }}</strong></p>
+                        </div>
+                        
+                        <div class="time-info">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-play-circle me-2"></i>Start Time</h6>
+                                    <p class="mb-0">{{ start_time|date:"F j, Y" }}</p>
+                                    <p class="text-muted">{{ start_time|time:"g:i A" }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-stop-circle me-2"></i>End Time</h6>
+                                    <p class="mb-0">{{ end_time|date:"F j, Y" }}</p>
+                                    <p class="text-muted">{{ end_time|time:"g:i A" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            You can join the meeting 15 minutes before the scheduled start time.
+                        </div>
+                        
+                    {% elif status == 'ended' %}
+                        <div class="mb-4">
+                            <i class="fas fa-calendar-times fa-4x text-danger mb-3"></i>
+                            <h4 class="text-danger">Meeting Has Ended</h4>
+                            <p class="lead">The meeting "{{ room.name }}" has already concluded.</p>
+                        </div>
+                        
+                        <div class="time-info">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-play-circle me-2"></i>Started At</h6>
+                                    <p class="mb-0">{{ start_time|date:"F j, Y" }}</p>
+                                    <p class="text-muted">{{ start_time|time:"g:i A" }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-stop-circle me-2"></i>Ended At</h6>
+                                    <p class="mb-0">{{ end_time|date:"F j, Y" }}</p>
+                                    <p class="text-muted">{{ end_time|time:"g:i A" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            This meeting has ended. Please contact the meeting organizer for any questions.
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'room_list' %}" class="btn btn-primary me-2">
+                            <i class="fas fa-list me-1"></i> View All Meetings
+                        </a>
+                        {% if user == room.created_by %}
+                        <a href="{% url 'manage_room_participants' room.id %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-users-cog me-1"></i> Manage Meeting
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

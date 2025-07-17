@@ -1,0 +1,11 @@
+# version: '3.6'
+services:
+ keycloak_staging:
+   image: quay.io/keycloak/keycloak:latest
+   environment:
+    
+     KEYCLOAK_ADMIN: admin
+     KEYCLOAK_ADMIN_PASSWORD: admin
+   command: ["start-dev"]
+   ports:
+     - 8088:8080

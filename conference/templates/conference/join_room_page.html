@@ -1,0 +1,53 @@
+{% extends 'conference/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Video Conference Rooms</h2>
+        <div>
+            <a href="{% url 'create_room' %}" class="btn btn-purple me-2">
+                <i class="fas fa-plus"></i> Create Room
+            </a>
+            <!-- Changed to link directly to first available room or remove if not needed -->
+            {% if rooms %}
+                <a href="{% url 'join_room' rooms.0.id %}" class="btn btn-outline-purple">
+                    <i class="fas fa-door-open"></i> Join Meeting
+                </a>
+            {% else %}
+                <button class="btn btn-outline-purple" disabled>
+                    <i class="fas fa-door-open"></i> No Rooms Available asdcfgh
+                </button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="row">
+        {% for room in rooms %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{ room.name }}</h5>
+                    <p class="card-text">
+                        <i class="fas fa-user"></i> {{ room.created_by.username }}<br>
+                        <i class="fas fa-calendar"></i> {{ room.created_at|date:"M d, Y" }}
+                        aEDSFGFHTYERQWEFSGFHZSDFGHJHGFDSAXCVBNM
+                    </p>
+                    <div class="mt-auto">
+                        <a href="{% url 'join_room' room.id %}" class="btn btn-outline-purple w-100">
+                            <i class="fas fa-door-open"></i> Join Room
+
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">No rooms available. Create one!</div>
+
+        </div>
+        {% endfor %}
+    </div>
+    
+</div>
+{% endblock %}

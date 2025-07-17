@@ -1,0 +1,8 @@
+{% extends "conference/base.html" %}
+{% block content %}
+<div class="container mt-5 text-center">
+    <h3 class="text-danger">This meeting has expired</h3>
+    <p>The meeting "{{ room.name }}" is no longer accessible.</p>
+    <a href="{% url 'create_room' %}" class="btn btn-primary mt-3">Return to Home</a>
+</div>
+{% endblock %}

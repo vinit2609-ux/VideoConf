@@ -1,0 +1,111 @@
+{% extends 'conference/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <!-- Paste Link Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Join by Link</h4>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="room-link" placeholder="Paste room link here">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" type="button" id="join-link-btn">Join</button>
+                        </div>
+                    </div>
+                    <small class="text-muted">Example: {{ request.build_absolute_uri }}room/123/</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <!-- Available Rooms Section -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Available Rooms</h4>
+                </div>
+                <div class="card-body p-0">
+                    {% if rooms %}
+                    <div class="list-group list-group-flush">
+                        {% for room in rooms %}
+                        <a href="{% url 'join_room' room.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ room.name }}</strong>
+                                <div class="text-muted small">Created by: {{ room.created_by.username }}</div>
+                            </div>
+                            <span class="badge badge-primary badge-pill">{{ room.participants.count }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info m-3">No rooms available</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% comment %} <div class="text-center mb-4">
+                        <a href="{% url 'create_room' %}" class="btn btn-success btn-lg">
+                            <i class="fas fa-plus-circle mr-2"></i>Create New Room
+                        </a>
+                    </div>
+                </div> {% endcomment %}
+
+ <div class="action-buttons" style="justify-content: flex-start;">
+  <a href="{% url 'create_room' %}" class="btn btn-success btn-lg">
+    <i class="fas fa-plus-circle mr-2"></i> Create New Room
+  </a>            
+                
+ 
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const joinLinkBtn = document.getElementById('join-link-btn');
+    const roomLinkInput = document.getElementById('room-link');
+    
+    joinLinkBtn.addEventListener('click', function() {
+        const link = roomLinkInput.value.trim();
+        if (link) {
+            const roomId = extractRoomId(link);
+            if (roomId) {
+                window.location.href = `/room/${roomId}/join/`;
+            } else {
+                alert('Invalid room link. Please check and try again.');
+            }
+        } else {
+            alert('Please paste a room link first.');
+        }
+    });
+
+    function extractRoomId(url) {
+        // Handle full URLs and paths
+        const match = url.match(/room\/(\d+)/);
+        if (match) return match[1];
+        
+        // Handle just the ID
+        if (/^\d+$/.test(url)) return url;
+        
+        return null;
+    }
+
+    // Auto-focus the input field
+    roomLinkInput.focus();
+    
+    // Handle paste events
+    roomLinkInput.addEventListener('paste', function(e) {
+        setTimeout(() => {
+            const pastedText = e.target.value;
+            const roomId = extractRoomId(pastedText);
+            if (roomId) {
+                joinLinkBtn.focus();
+            }
+        }, 10);
+    });
+});
+</script>
+{% endblock %}

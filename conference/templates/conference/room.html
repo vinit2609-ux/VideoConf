@@ -1,0 +1,488 @@
+{% extends "conference/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">
+            <i class="fas fa-video me-2"></i> V E E K S H A : {{ room.name }}
+        </h2>
+        {% if participant.is_moderator or user == room.created_by %}
+        <button class="btn btn-outline-primary" onclick="loadRecordingRequests()" type="button" data-bs-toggle="collapse" data-bs-target="#managementSection" aria-expanded="false" aria-controls="managementSection">
+            <i class="fas fa-users-cog me-1"></i> Manage Participants & Recording Requests
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Collapsible Management Section -->
+    {% if participant.is_moderator or user == room.created_by %}
+    <div class="collapse mb-3" id="managementSection">
+        <div class="card card-body">
+           
+           
+            <!-- Participants Management Section -->
+            <div class="mb-4">
+                <h6 class="border-bottom pb-2">Participants</h6>
+                <div id="participantsList">
+                    <!-- Participants will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Recording Requests Section -->
+            <div class="mb-4">
+                <h6 class="border-bottom pb-2">Recording Requests</h6>
+                <div id="recordingRequestsSection">
+                    <!-- Requests will be loaded here by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div id="jitsi-container" style="height: 80vh; width: 100%;"></div>
+
+    <!-- Recording Request Button (Visible only to non-moderators) -->
+    {% if not participant.is_moderator %}
+    <div class="my-3">
+        <button id="requestRecordingBtn" class="btn btn-warning">
+            Request Recording Permission
+        </button>
+        
+        <!-- Recording Request Modal -->
+        <div class="modal fade" id="recordingRequestModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Request Recording Permission</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="recordingRequestForm">
+                            <div class="mb-3">
+                                <label for="recipientType" class="form-label">Send request to:</label>
+                                <select class="form-select" id="recipientType" name="recipient_type" required>
+                                    <option value="">Select recipient...</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="requestMessage" class="form-label">Message (optional):</label>
+                                <textarea class="form-control" id="requestMessage" name="message" rows="3" placeholder="Explain why you need recording permission..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="submitRequestBtn">Send Request</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+
+</div>
+{% endblock %}
+
+<!-- Toast Container and Template -->
+<div aria-live="polite" aria-atomic="true" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080; min-width: 300px;">
+  <div id="toastContainer"></div>
+</div>
+
+<template id="toastTemplate">
+  <div class="toast align-items-center text-bg-primary border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</template>
+
+{% block extra_js %}
+<!-- Jitsi Meet External API -->
+<script src="https://meet.jit.si/external_api.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const room_id = {{ room.id }};
+    const isModerator = {{ participant.is_moderator|yesno:"true,false" }};
+    const csrfToken = '{{ csrf_token }}';
+    const currentUser = '{{ user.username|escapejs }}';
+
+    const domain = "{{ jitsi_url}}";
+    console.log("Using domain:", domain);
+
+    window.approveUserRecording = function (requestId) {
+        fetch(`/api/approve-recording/${room_id}/${requestId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        }).then(res => res.json())
+          .then(data => {
+              if (data.status === "approved") {
+                  showToast("Recording permission granted!", 'success');
+                  loadParticipantsAndRequests();
+              } else if (data.error) {
+                  showToast("Error: " + data.error, 'danger');
+              }
+          })
+          .catch(error => {
+              console.error("Error approving recording request:", error);
+              showToast("Error approving recording request. Please try again.", 'danger');
+          });
+    };
+
+    function loadParticipantsAndRequests() {
+        // Load participants
+        fetch(`/api/get-room-participants/${room_id}/`)
+            .then(res => res.json())
+            .then(data => {
+                const participantsList = document.getElementById("participantsList");
+                participantsList.innerHTML = "";
+                
+                if (data.participants && data.participants.length > 0) {
+                    data.participants.forEach((participant) => {
+                        const participantDiv = document.createElement("div");
+                        participantDiv.className = "d-flex justify-content-between align-items-center mb-2 p-2 border rounded";
+                        participantDiv.innerHTML = `
+                            <div>
+                                <strong>${participant.username}</strong>
+                                ${participant.is_moderator ? '<span class="badge bg-primary ms-2">Moderator</span>' : ''}
+                                ${participant.is_active ? '<span class="badge bg-success ms-1">Active</span>' : '<span class="badge bg-secondary ms-1">Inactive</span>'}
+                            </div>
+                            <div>
+                                ${!participant.is_moderator ? `<button class="btn btn-sm btn-outline-primary me-1" onclick="addModerator(${participant.user_id})">Make Moderator</button>` : ''}
+                                ${participant.is_moderator && participant.user_id !== {{ room.created_by.id }} ? `<button class="btn btn-sm btn-outline-warning" onclick="removeModerator(${participant.user_id})">Remove Moderator</button>` : ''}
+                            </div>
+                        `;
+                        participantsList.appendChild(participantDiv);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error("Error loading participants:", error);
+            });
+    }
+
+    window.loadRecordingRequests = loadRecordingRequests;
+
+
+    // Helper to set up Jitsi with correct toolbar
+    function launchJitsi(canRecord) {
+        const container = document.getElementById("jitsi-container");
+        if (!container) {
+            alert("Jitsi container not found! Please reload the page or contact support.");
+            console.error("Jitsi container not found in DOM.");
+            return;
+        }
+        console.log("Launching Jitsi with canRecord:", canRecord, "isModerator:", isModerator);
+        const options = {
+            roomName: "{{ room.name|escapejs }}",
+            width: "100%",
+            height: "100%",
+            parentNode: container,
+            userInfo: {
+                displayName: currentUser
+            },
+            configOverwrite: {
+            hiddenRecordingEnabled: true,
+            fileRecordingsEnabled: true,
+            liveStreamingEnabled: false,
+            hiddenDomain: 'jitsi_url',  // <-- Replace with your actual recorder domain
+            startWithAudioMuted: false,
+            startWithVideoMuted: false,
+            disableInviteFunctions: true, 
+            brandwatermarkUrl: "{% static 'conference/images/shyena_logo.png' %}",
+            brandwaterLogo: "{% static 'conference/images/shyena_logo.png' %}",
+            BRAND_WATERMARK_LINK: "https://shyena.com",
+            DEFAULT_LOGO_URL: 'https://shyena.com',
+        },
+            interfaceConfigOverwrite: {
+                SHOW_JITSI_WATERMARK: false,
+                brandwatermarkUrl: "{% static 'conference/images/shyena_logo.png' %}",
+                brandwaterLogo: "{% static 'conference/images/shyena_logo.png' %}",
+                BRAND_WATERMARK_LINK: "https://shyena.com",
+                DEFAULT_LOGO_URL: 'https://shyena.com',
+                TOOLBAR_BUTTONS: (isModerator || canRecord)
+                    ? [
+                        "microphone", "camera", "chat", "desktop", "fullscreen",
+                        "raisehand", "videoquality", "tileview", "hangup", "recording", "settings", 
+                        "participants-pane", "feedback", "stats", "shortcuts", "help", "download", 
+                        "mute-everyone", "lock-room", "kick-out", "approve-recording"
+                    ]
+                    : [
+                        "microphone", "camera", "chat", "desktop", "fullscreen",
+                        "raisehand", "videoquality", "tileview", "hangup",
+                        "settings", "participants-pane", "feedback", "stats", "shortcuts", "help", "download"
+                    ]
+            }
+        };
+
+     
+        
+
+        const api = new JitsiMeetExternalAPI(domain, options);
+        api.addEventListener('readyToClose', () => {
+            window.location.href = "/";
+        });
+    }
+
+    // Check if user has recording permission
+    if (!isModerator) {
+        console.log("User is not moderator, checking recording permission...");
+        fetch(`/api/has-recording-permission/${room_id}/`, {
+            headers: { 'X-CSRFToken': csrfToken }
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log("Recording permission response:", data);
+            const canRecord = data.can_record === true;
+            console.log("Final canRecord value:", canRecord);
+            launchJitsi(canRecord);
+        })
+        .catch(error => {
+            console.error("Error checking recording permission:", error);
+            launchJitsi(false);
+        });
+    } else {
+        console.log("User is moderator, launching with recording enabled");
+        launchJitsi(true);
+    }
+
+    // WebSocket connection for real-time updates
+    const ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws_path = ws_scheme + '://' + window.location.host + '/ws/conference/' + room_id + '/';
+    const socket = new WebSocket(ws_path);
+
+    socket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        if (data.type === 'recording_approved') {
+            showToast('Your recording request has been approved! You can now record the meeting.', 'success');
+            location.reload();
+        }
+        // Listen for real-time updates
+        if (data.type === 'participants_updated') {
+            loadParticipantsAndRequests();
+        }
+        if (data.type === 'recording_requests_updated') {
+            loadRecordingRequests();
+        }
+    };
+
+    socket.onclose = function(e) {
+        console.error('WebSocket closed unexpectedly');
+    };
+
+    // Request Recording
+    const requestBtn = document.getElementById("requestRecordingBtn");
+    const requestModal = new bootstrap.Modal(document.getElementById("recordingRequestModal"));
+    const submitRequestBtn = document.getElementById("submitRequestBtn");
+    
+    if (requestBtn) {
+        console.log("Request Recording button found.");
+        
+        // Load available approvers when modal opens
+        requestBtn.addEventListener("click", function () {
+            console.log("Request button clicked, loading approvers...");
+            fetch(`/api/get-available-approvers/${room_id}/`)
+                .then(res => {
+                    console.log("Approvers response status:", res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    console.log("Approvers data for modal:", data);
+                    const select = document.getElementById("recipientType");
+                    select.innerHTML = '<option value="">Select recipient...</option>';
+                    data.approvers.forEach(approver => {
+                        console.log("Adding approver option:", approver);
+                        const option = document.createElement("option");
+                        option.value = approver.type;
+                        option.textContent = approver.display_name;
+                        // Default to 'moderator' if available
+                        if (approver.type === 'moderator') {
+                            option.selected = true;
+                        }
+                        select.appendChild(option);
+                    });
+                    console.log("Showing modal with", data.approvers.length, "approvers");
+                    requestModal.show();
+                })
+                .catch(error => {
+                    console.error("Error loading approvers:", error);
+                    showToast("Error loading available approvers. Please try again.", 'danger');
+                });
+        });
+        
+        // Submit recording request
+        submitRequestBtn.addEventListener("click", function () {
+            const recipientType = document.getElementById("recipientType").value;
+            const message = document.getElementById("requestMessage").value;
+            
+            if (!recipientType) {
+                showToast("Please select a recipient type.", 'warning');
+                return;
+            }
+            
+            console.log("Submitting recording request:", { recipientType, message });
+            
+            const formData = new FormData();
+            formData.append('recipient_type', recipientType);
+            formData.append('message', message);
+            
+            fetch(`/api/request-recording/${room_id}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            })
+            .then(resp => {
+                console.log("Response status:", resp.status);
+                return resp.json();
+            })
+            .then(data => {
+                console.log("Recording request response:", data);
+                if (data.status === "requested") {
+                    showToast("Recording request sent successfully!", 'success');
+                    requestModal.hide();
+                } else if (data.status === "already_requested") {
+                    showToast("You have already requested recording permission for this recipient type.", 'warning');
+                } else if (data.error) {
+                    showToast("Error: " + data.error, 'danger');
+                } else {
+                    showToast("Unexpected response: " + JSON.stringify(data), 'warning');
+                }
+            })
+            .catch(error => {
+                console.error("Error submitting recording request:", error);
+                showToast("Error submitting recording request. Please try again.", 'danger');
+            });
+        });
+    }
+
+    // Approve function
+   
+
+    // Load participants and requests when management section is shown
+    const managementSection = document.getElementById("managementSection");
+    if (managementSection) {
+        managementSection.addEventListener('shown.bs.collapse', function () {
+            loadParticipantsAndRequests();
+            loadRecordingRequests();
+        });
+    }
+
+    // Fetch and render pending recording requests
+    function loadRecordingRequests() {
+        fetch(`/api/get-recording-requests/${room_id}/`)
+            .then(res => res.json())
+            .then(data => {
+                const section = document.getElementById('recordingRequestsSection');
+                const listId = 'pendingRequestsList';
+                const noReqId = 'noRequestsMessage';
+                let html = '';
+                if (data.requests && data.requests.length > 0) {
+                    html += `<div id="${listId}" class="list-group">`;
+                    data.requests.forEach(req => {
+                        html += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${req.requester.username}</strong>
+                                <span class="badge bg-info">${req.recipient_type}</span>
+                                ${req.message ? `<br><small class='text-muted'>"${req.message}"</small>` : ''}
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm" onclick="approveUserRecording(${req.id})">Approve</button>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                    html += `<div id="${noReqId}" class="text-muted text-center py-3" style="display:none;">No pending recording requests at the moment.</div>`;
+                } else {
+                    html += `<div id="${noReqId}" class="text-muted text-center py-3">No pending recording requests at the moment.</div>`;
+                }
+                section.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading recording requests:', error);
+            });
+    }
+
+  
+
+    // Moderator management functions
+    window.addModerator = function(userId) {
+        const formData = new FormData();
+        formData.append('action', 'add_moderator');e
+        formData.append('user_id', userId);
+        
+        fetch(`/api/manage-participants/${room_id}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast('User is now a moderator!', 'success');
+                loadParticipantsAndRequests();
+            } else {
+                showToast('Error: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error("Error adding moderator:", error);
+            showToast("Error adding moderator. Please try again.", 'danger');
+        });
+    };
+
+    window.removeModerator = function(userId) {
+        const formData = new FormData();
+        formData.append('action', 'remove_moderator');
+        formData.append('user_id', userId);
+        
+        fetch(`/api/manage-participants/${room_id}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast('User is no longer a moderator!', 'warning');
+                loadParticipantsAndRequests();
+            } else {
+                showToast('Error: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error("Error removing moderator:", error);
+            showToast("Error removing moderator. Please try again.", 'danger');
+        });
+    };
+
+    // Toast notification function
+    function showToast(message, type = 'primary', delay = 4000) {
+        const container = document.getElementById('toastContainer');
+        const template = document.getElementById('toastTemplate');
+        if (!container || !template) return;
+        const toastElem = template.content.firstElementChild.cloneNode(true);
+        toastElem.classList.remove('text-bg-primary');
+        toastElem.classList.add('text-bg-' + type);
+        toastElem.querySelector('.toast-body').textContent = message;
+        container.appendChild(toastElem);
+        const toast = new bootstrap.Toast(toastElem, { delay: delay });
+        toast.show();
+        toastElem.addEventListener('hidden.bs.toast', () => {
+            toastElem.remove();
+        });
+    }
+});
+</script>
+
+<!-- TEST_MARKER_ROOM_EXTRA_JS -->
+{% endblock %}

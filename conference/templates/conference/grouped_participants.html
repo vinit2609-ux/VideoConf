@@ -1,0 +1,32 @@
+{% extends "conference/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Participants in Room: <strong>{{ room.name }}</strong></h2>
+
+    {% if grouped_participants %}
+        {% for group in grouped_participants %}
+            <div class="row mb-3">
+                {% for participant in group %}
+                    <div class="col-md-3">
+                        <div class="card shadow-sm">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">{{ participant.user.username }}</h5>
+                                {% if participant.is_moderator %}
+                                    <span class="badge bg-primary">Moderator</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Participant</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No participants in this room yet.</p>
+    {% endif %}
+
+    <a href="{% url 'room' room.id %}" class="btn btn-outline-primary mt-3">Back to Room</a>
+</div>
+{% endblock %}
